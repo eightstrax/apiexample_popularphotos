@@ -1,0 +1,182 @@
+<h4>Introduction</h4>
+<p>This tutorial will give you a real example of how you could write some code to interface with MapMyPhotos.</p>
+<p>The aim of this task will be to display a web page that shows the most popular photos for a user over the last 31 days. &nbsp;This will cover two main requests:</p>
+<ol>
+	<li>Authenticating with MapMyPhotos using a user name and password</li>
+	<li>Making a request to obtain the most popular photos, over the last 31 days, belonging to the user who has logged in.</li>
+</ol>
+<p>The code will be written in a PHP script (*.php file) and it will be making HTTP requests to the API using CURL.</p>
+<p>The PHP script will be accessed from a web browser, execute on the server and render out the photos as a response.</p>
+<p>You'll need a server running PHP with CURL installed to complete this tutorial.</p>
+<p>The source code for this example is available on GitHub&nbsp;<a href="https://github.com/mapmyphotos/apiexample_popularphotos">https://github.com/mapmyphotos/apiexample_popularphotos</a>&nbsp;</p>
+<h4>Step 1 - Define some variables for your script</h4>
+<p>Start writing your script by defining variables that can be re-used throughout your script. &nbsp;First, define your MapMyPhotos username and password. &nbsp;Next define details about the API.</p>
+<pre>&lt;?php
+
+    /*******************
+        USERNAME, PASSWORD AND DETAILS ABOUT THE MAPMYPHOTO API THAT YOU WILL USE
+    *******************/
+
+    $mmpUsernameOrEmail         = "lachlan";
+    $mmpPassword                = "****************";
+
+    $baseAPIUrl                 = "https://x0nm4rewz5.execute-api.ap-northeast-1.amazonaws.com/Production";
+    $apiRequestContentType      = "application/json";
+    $apiRequestMethod           = "POST";
+
+    $apiEndpoint_SubmitLogin    = "/login/submit";
+    $apiEndpoint_PopularPhotos  = "/stats/getpopularphotos";
+
+    $apiAuthToken = null;
+
+    $arryPhotos = array();
+    $userObj = null;
+</pre>
+<p>Later on your code will set the $apiAuthToken, $arryPhotos and $userObj. &nbsp;Right at the end, these variables will be used to output some profile information and the popular photos of that user for the last 31 days.</p>
+<h4>Step 2 - Setup a try/catch block and write your first request to submit login and retrieve an Auth Token</h4>
+<p>Here you'll setup a try/catch block (just in case something goes wrong) and make your first request to submit login. &nbsp;The request is made with CURL. &nbsp;The $requestData is an associative array that represents the request body. &nbsp;This is later encoded into a JSON string using the PHP function "json_encode". &nbsp; Next CURL is initialised using the BaseURL and submit login API endpoint (these are the variables defined in step 1). &nbsp;The method is set to POST using the $apiRequestMethod variable defined earlier and HTTP headers are set as required.</p>
+<p>CURL is executed using "curl_exec" which will return the response from MapMyPhotos. &nbsp;This response will be a JSON string, so next your code will need to decode the JSON using "json_decode". &nbsp;After decoding the JSON, you can access the response as an Object. &nbsp;For more information, see the API documentation for the submit login request/response here : LOGIN -&gt; Login to MapMyPhotos.</p>
+<p>After validating the call succeeded, your code is now setting those variables at the start of the script. &nbsp;Most importantly, it's setting the Auth Token variable. &nbsp;This Auth Token variable will be used in the next request (or any other subsequent request that requires authorisation).</p>
+<p></p>
+<pre>    try{
+
+        /*******************
+            MAKE AN API CALL TO LOGIN AND RETRIEVE THE AUTH TOKEN FROM THE RESPONSE
+        *******************/
+        $requestData = array
+        (
+            "UserName" =&gt; $mmpUsernameOrEmail, 
+            "Password" =&gt; $mmpPassword
+        );   
+
+        $dataJsonString = json_encode($requestData);                                                                                   
+                                                                                                                            
+        $ch = curl_init($baseAPIUrl.$apiEndpoint_SubmitLogin);                                                                      
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $apiRequestMethod);                                                                     
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $dataJsonString);                                                                  
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);                                                                      
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array
+            (                                                                          
+                'Content-Type: '.$apiRequestContentType,                                                                                
+                'Content-Length: '.strlen($dataJsonString)
+            )                                                                       
+        );                                                                                                                   
+                                                                                                                            
+        $submitLoginResponse = curl_exec($ch);
+        $submitLoginObjResponse = json_decode($submitLoginResponse);
+
+        if
+        (
+            isset($submitLoginObjResponse) &amp;&amp; 
+            $submitLoginObjResponse-&gt;Succeeded
+        )
+        {
+            //Login Success
+            $userObj = $submitLoginObjResponse-&gt;Data;
+            $apiAuthToken = $submitLoginObjResponse-&gt;AuthToken;
+        }
+        else
+        {
+            //Login Failure
+            echo "<span style="color: red;">Login to MapMyPhotos failed: ".$submitLoginObjResponse-&gt;ErrorMessage."</span>";
+            exit();
+        }
+
+        
+    }
+    catch(Exception $ex)
+    {
+        echo "<span style="color: red;">Exception caught: ".$ex-&gt;getMessage()."</span>";
+        exit();
+    }
+</pre>
+<p><span style="color: rgb(51, 51, 51);"><br></span></p>
+<p><span style="color: rgb(51, 51, 51);">Step 3 - Make a request to get popular photos for your user over the last 31 days</span></p>
+<p>Now that you have logged in and hold a valid Auth Token, make the next request to obtain your popular photos for the last 31 days. &nbsp;Similar to the request to submit login, first define the request data in an associative array. &nbsp;Next encode this into a JSON string. &nbsp;Initialise the CURL request and JSON decode the response. &nbsp;Now that the response data is accessible through the response object, check that API request succeeded. &nbsp;Finally set the variable you defined in the first step so that the popular photo data can be accessed later on.</p>
+<p></p>
+<pre>        /*******************
+            MAKE AN API CALL TO OBTAIN MOST POPULAR PHOTOS, LAST 31 DAYS
+        *******************/
+        $requestData = array
+        (
+            "StartDate" =&gt; date("j M Y H:i:s", time() - (31 * 24 * 60 * 60)), 
+            "EndDate" =&gt; date("j M Y H:i:s"),
+            "AuthToken" =&gt; $apiAuthToken
+        );   
+
+        $dataJsonString = json_encode($requestData);                                                                                   
+                                                                                                                            
+        $ch = curl_init($baseAPIUrl.$apiEndpoint_PopularPhotos);                                                                      
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $apiRequestMethod);                                                                     
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $dataJsonString);                                                                  
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);                                                                      
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array
+            (                                                                          
+                'Content-Type: '.$apiRequestContentType,                                                                                
+                'Content-Length: '.strlen($dataJsonString)
+            )                                                                       
+        );     
+                                                                                                              
+                                                                                                                            
+        $popPhotosResponse = curl_exec($ch);
+        $popPhotosObjResponse = json_decode($popPhotosResponse);
+
+        if
+        (
+            isset($popPhotosObjResponse) &amp;&amp; 
+            $popPhotosObjResponse-&gt;Succeeded
+        )
+        {
+            //Get Popular Photos Success
+            $arryPhotos = $popPhotosObjResponse-&gt;Data;
+        }
+        else
+        {
+            //Get Popular Photos Failure
+            echo "<span style="color: red;">Request MapMyPhotos failed: ".$popPhotosObjResponse-&gt;ErrorMessage."</span>";
+            exit();
+        }
+</pre>
+<p><br></p>
+<h4>Step 4 - Echo out your profile info and the popular photos</h4>
+<p>Now that your script has collected all information, you can exit the try/catch block and render out the profile information and popular photos. &nbsp;First, do a check to make sure the $userObj (profile information) was set during login and the $arryPhotos (array of popular photos) was set with the API request. &nbsp;For more information about the response format of the popular photos api request, see the API document under "Statistics" -&gt; "Get Popular Photos".</p>
+<p></p>
+<pre>    /*******************
+        ECHO OUT THE PHOTOS AND PROFILE INFORMATION IN HTML FORMAT
+    *******************/
+
+    if($userObj != null &amp;&amp; count($arryPhotos) &gt; 0)
+    {
+        //PROFILE INFORMATION
+        echo "&lt;div style="float: left;"&gt;&lt;img style="width: 100px;height: 100px;" src="".$userObj-&gt;ProfilePicture.""&gt;&lt;/div&gt;";
+        echo "&lt;div style="float: left;"&gt;&lt;h4&gt;Popular photos for ".$userObj-&gt;FirstName." ".
+                $userObj-&gt;LastName.", last 31 days&lt;/h4&gt;&lt;/div&gt;&lt;div&gt;&lt;/div&gt;";
+
+        echo "&lt;hr&gt;";
+
+        //POPULAR PHOTOS
+        foreach($arryPhotos as $thisPhoto)
+        {
+            echo    "&lt;div style="float: left;width: 150px;"&gt;".
+                        "&lt;center&gt;".
+                            "&lt;img style="width: 150px;height: 150px;" src="".$thisPhoto-&gt;ThmSrc.""&gt;".
+                            $thisPhoto-&gt;Caption."&lt;br&gt;".
+                            "Taken in ".$thisPhoto-&gt;City."&lt;br&gt;".
+                            "Index: ".$thisPhoto-&gt;StatCount.
+                        "&lt;/center&gt;".
+                    "&lt;/div&gt;";
+        }
+
+        echo "&lt;div&gt;&lt;/div&gt;";
+    }
+    else
+    {
+        echo "&lt;span style="color: red;"&gt;Something went wrong.&lt;/span&gt;";
+        exit();
+    }
+</pre>
+<p><br></p>
+<h4>Expected results</h4>
+<p>You should see something like the following as an expected result:</p>
+<p><img src="http://files-mapmyphotos-net.s3.amazonaws.com/SharedImages/api_popphotos_example_result.PNG"></p>
+<p></p>
