@@ -5,7 +5,7 @@
     *******************/
 
     $mmpUsernameOrEmail         = "lachlan";
-    $mmpPassword                = "********************";
+    $mmpPassword                = "***********************";
 
     $baseAPIUrl                 = "https://x0nm4rewz5.execute-api.ap-northeast-1.amazonaws.com/Production";
     $apiRequestContentType      = "application/json";
@@ -62,6 +62,9 @@
             echo "<span style='color:red;'>Login to MapMyPhotos failed: ".$submitLoginObjResponse->ErrorMessage."</span>";
             exit();
         }
+        
+        // close cURL resource, and free up system resources
+        curl_close($ch);
 
         /*******************
             MAKE AN API CALL TO OBTAIN MOST POPULAR PHOTOS, LAST 31 DAYS
@@ -105,6 +108,9 @@
             echo "<span style='color:red;'>Request MapMyPhotos failed: ".$popPhotosObjResponse->ErrorMessage."</span>";
             exit();
         }
+        
+        // close cURL resource, and free up system resources
+        curl_close($ch);
     }
     catch(Exception $ex)
     {
