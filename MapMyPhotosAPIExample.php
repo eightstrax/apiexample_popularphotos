@@ -7,7 +7,7 @@
     $mmpUsernameOrEmail         = "lachlan";
     $mmpPassword                = "***********************";
 
-    $baseAPIUrl                 = "https://guty1ov3l8.execute-api.ap-southeast-2.amazonaws.com/mapmyphotos_syd/";
+    $baseAPIUrl                 = "https://api.mapmyphotos.net/";
     $apiRequestContentType      = "application/json";
     $apiRequestMethod           = "POST";
 
